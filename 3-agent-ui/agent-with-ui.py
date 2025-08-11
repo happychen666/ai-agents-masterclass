@@ -9,7 +9,6 @@ import os
 
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, AIMessage, HumanMessage, ToolMessage
 
 load_dotenv()
@@ -59,7 +58,11 @@ def prompt_ai(messages, nested_calls=0):
 
     # First, prompt the AI with the latest user message
     tools = [create_asana_task]
-    asana_chatbot = ChatOpenAI(model=model) if "gpt" in model.lower() else ChatAnthropic(model=model)
+    asana_chatbot = ChatOpenAI(
+            model=model,
+            api_key=os.environ.get("openai_api_key"),
+            base_url=os.environ.get("openai_api_base")
+        )
     asana_chatbot_with_tools = asana_chatbot.bind_tools(tools)
 
     stream = asana_chatbot_with_tools.stream(messages)
@@ -110,7 +113,7 @@ def main():
 
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
-        message_json = json.loads(message.json())
+        message_json = json.loads(message.model_dump_json())
         message_type = message_json["type"]
         if message_type in ["human", "ai", "system"]:
             with st.chat_message(message_type):

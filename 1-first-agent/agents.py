@@ -8,7 +8,10 @@ import os
 
 load_dotenv()
 
-client = OpenAI()
+client = OpenAI(
+    api_key=os.environ.get("openai_api_key"),
+    base_url=os.environ.get("openai_api_base")
+)
 model = os.getenv('OPENAI_MODEL', 'gpt-4o')
 
 configuration = asana.Configuration()
@@ -17,7 +20,10 @@ api_client = asana.ApiClient(configuration)
 
 tasks_api_instance = asana.TasksApi(api_client)
 
+print('tasks_api_instance===', tasks_api_instance)
+
 def create_asana_task(task_name, due_on="today"):
+    print('task_name===', task_name,'due_on===', due_on)
     """
     Creates a task in Asana given the name of the task and when it is due
 
@@ -43,6 +49,7 @@ def create_asana_task(task_name, due_on="today"):
 
     try:
         api_response = tasks_api_instance.create_task(task_body, {})
+        print('api_response===', api_response)
         return json.dumps(api_response, indent=2)
     except ApiException as e:
         return f"Exception when calling TasksApi->create_task: {e}"
@@ -97,11 +104,12 @@ def prompt_ai(messages):
 
         # Next, for each tool the AI wanted to call, call it and add the tool result to the list of messages
         for tool_call in tool_calls:
+            print('tool_call===', tool_call)
             function_name = tool_call.function.name
             function_to_call = available_functions[function_name]
             function_args = json.loads(tool_call.function.arguments)
             function_response = function_to_call(**function_args)
-
+            print('function_response===', function_response)
             messages.append({
                 "tool_call_id": tool_call.id,
                 "role": "tool",

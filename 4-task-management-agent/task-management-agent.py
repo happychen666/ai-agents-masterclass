@@ -9,7 +9,6 @@ import os
 
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, AIMessage, HumanMessage, ToolMessage
 
 load_dotenv()
@@ -73,7 +72,8 @@ def get_asana_projects():
         str: The API response from getting the projects or an error message if the projects couldn't be fetched.
         The API response is an array of project objects, where each project object looks like:
         {'gid': '1207789085525921', 'name': 'Project Name', 'resource_type': 'project'}
-    """    
+    """
+    print('get_asana_projects called')    
     opts = {
         'limit': 50, # int | Results per page. The number of objects to return per page. The value must be between 1 and 100.
         'workspace': workspace_gid, # str | The workspace or organization to filter projects on.
@@ -105,7 +105,8 @@ def create_asana_project(project_name, due_on=None):
             "name": project_name, "due_on": due_on, "workspace": workspace_gid
         }
     } # dict | The project to create.
-
+    print('create_asana_project called')
+    print('project_name===', project_name, 'due_on===', due_on)
     try:
         # Create a project
         api_response = projects_api_instance.create_project(body, {})
@@ -133,7 +134,8 @@ def get_asana_tasks(project_gid):
         'project': project_gid, # str | The project to filter tasks on.
         'opt_fields': "created_at,name,due_on", # list[str] | This endpoint returns a compact resource, which excludes some properties by default. To include those optional properties, set this query parameter to a comma-separated list of the properties you wish to include.
     }
-
+    print('get_asana_tasks called')
+    print('project_gid===', project_gid)
     try:
         # Get multiple tasks
         api_response = tasks_api_instance.get_tasks(opts)
@@ -159,6 +161,8 @@ def update_asana_task(task_gid, data):
     """      
     # Data: {"completed": True or False, "due_on": "YYYY-MM-DD"}
     body = {"data": data} # dict | The task to update.
+    print('update_asana_task called')
+    print('task_gid===', task_gid, 'data===', data)
 
     try:
         # Update a task
@@ -179,7 +183,9 @@ def delete_task(task_gid):
         task_gid (str): The ID of the task to delete
     Returns:
         str: The API response of deleting the task or an error message if the API call threw an error
-    """        
+    """      
+    print('delete_task called')
+    print('task_gid===', task_gid)
     try:
         # Delete a task
         api_response = tasks_api_instance.delete_task(task_gid)
@@ -206,12 +212,20 @@ available_functions = {
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def prompt_ai(messages, nested_calls=0):
+    print("=== LLM messages ===")
+    for m in messages:
+        print(m)
+
     if nested_calls > 5:
         raise "AI is tool calling too much!"
 
     # First, prompt the AI with the latest user message
     tools = [tool for _, tool in available_functions.items()]
-    asana_chatbot = ChatOpenAI(model=model) if "gpt" in model.lower() else ChatAnthropic(model=model)
+    asana_chatbot = ChatOpenAI(
+            model=model,
+            api_key=os.environ.get("openai_api_key"),
+            base_url=os.environ.get("openai_api_base")
+        )
     asana_chatbot_with_tools = asana_chatbot.bind_tools(tools)
 
     stream = asana_chatbot_with_tools.stream(messages)
@@ -270,7 +284,7 @@ def main():
 
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
-        message_json = json.loads(message.json())
+        message_json = json.loads(message.model_dump_json())
         message_type = message_json["type"]
         if message_type in ["human", "ai", "system"]:
             with st.chat_message(message_type):

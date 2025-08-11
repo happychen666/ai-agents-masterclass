@@ -22,7 +22,7 @@ def main():
 
     # Display chat messages from history each time the script is rerun when the UI state changes
     for message in st.session_state.messages:
-        message_json = json.loads(message.json())
+        message_json = json.loads(message.model_dump_json())
         with st.chat_message(message_json["type"]):
             st.markdown(message_json["content"])        
 

@@ -8,7 +8,6 @@ import os
 
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 
 load_dotenv()
@@ -58,7 +57,11 @@ def prompt_ai(messages, nested_calls=0):
 
     # First, prompt the AI with the latest user message
     tools = [create_asana_task]
-    asana_chatbot = ChatOpenAI(model=model) if "gpt" in model.lower() else ChatAnthropic(model=model)
+    asana_chatbot = ChatOpenAI(
+            model=model,
+            api_key=os.environ.get("openai_api_key"),
+            base_url=os.environ.get("openai_api_base")
+        )
     asana_chatbot_with_tools = asana_chatbot.bind_tools(tools)
 
     ai_response = asana_chatbot_with_tools.invoke(messages)
