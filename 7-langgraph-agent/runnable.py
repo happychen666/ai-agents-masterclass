@@ -1,14 +1,20 @@
 from langgraph.graph.message import AnyMessage, add_messages
-from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
+# from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
+# from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+# from langgraph.checkpoint.sqlite import SqliteSaver  # 改用同步版本的 SqliteSaver
+# from langgraph.checkpoint.memory import MemoryCheckpointer
+from langgraph.checkpoint.memory import MemorySaver
+
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
 from typing import Annotated, Literal, Dict
 from dotenv import load_dotenv
+from pathlib import Path
+import uuid
 import os
 
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import ToolMessage
 
 from tools import available_functions
@@ -16,8 +22,15 @@ from tools import available_functions
 load_dotenv()
 model = os.getenv('LLM_MODEL', 'gpt-4o')
 
+# Initialize memory
+memory = MemorySaver()
+
 tools = [tool for _, tool in available_functions.items()]
-chatbot = ChatOpenAI(model=model, streaming=True) if "gpt" in model.lower() else ChatAnthropic(model=model, streaming=True)
+chatbot = ChatOpenAI(
+            model=model,
+            api_key=os.environ.get("openai_api_key"),
+            base_url=os.environ.get("openai_api_base")
+        )
 chatbot_with_tools = chatbot.bind_tools(tools)
 
 ### State
@@ -101,7 +114,15 @@ def should_continue(state: GraphState) -> Literal["__end__", "tools"]:
     else:
         return "tools"
 
-def get_runnable():
+    
+async def get_runnable():
+    # Create data directory if it doesn't exist
+    data_dir = Path(__file__).parent / "data"
+    data_dir.mkdir(exist_ok=True)
+    
+    # Use a file-based database instead of memory
+    db_path = data_dir / f"chat_{uuid.uuid4()}.db"
+
     workflow = StateGraph(GraphState)
 
     # Define the nodes and how they connect
@@ -116,8 +137,6 @@ def get_runnable():
     )
     workflow.add_edge("tools", "agent")
 
-    # Compile the LangGraph graph into a runnable
-    memory = AsyncSqliteSaver.from_conn_string(":memory:")
+    # Use our simple checkpointer
     app = workflow.compile(checkpointer=memory)
-
     return app

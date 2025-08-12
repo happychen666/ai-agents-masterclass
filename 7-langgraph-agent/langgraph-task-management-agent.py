@@ -9,13 +9,19 @@ from langchain_core.messages import SystemMessage, AIMessage, HumanMessage, Tool
 
 from runnable import get_runnable
 
-@st.cache_resource
-def create_chatbot_instance():
-    return get_runnable()
+# @st.cache_resource
+# async def create_chatbot_instance():
+#     return await get_runnable()
 
-chatbot = create_chatbot_instance()
+# 添加缓存机制来重用 runnable 实例
+async def get_cached_runnable():
+    """Get or create a cached runnable instance"""
+    try:
+        return await get_runnable()
+    except Exception as e:
+        st.error(f"Error initializing chatbot: {e}")
+        return None
 
-@st.cache_resource
 def get_thread_id():
     return str(uuid.uuid4())
 
@@ -29,6 +35,14 @@ The current date is: {datetime.now().date()}
 """
 
 async def prompt_ai(messages):
+
+    # 每次对话创建新的 runnable 实例
+    chatbot = await get_runnable()
+    
+    if not chatbot:
+        yield "Error: Could not initialize chatbot"
+        return
+
     config = {
         "configurable": {
             "thread_id": thread_id
