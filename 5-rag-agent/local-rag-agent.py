@@ -53,7 +53,7 @@ def get_chroma_instance():
     # Get the documents split into chunks
     docs = load_documents(rag_directory)
 
-    # create the open-sourc e embedding function
+    # create the open-source embedding function
     embedding_function = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
     # load it into Chroma
