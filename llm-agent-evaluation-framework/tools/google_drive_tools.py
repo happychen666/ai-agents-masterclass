@@ -271,3 +271,23 @@ available_drive_functions = {
   "delete_folder": delete_folder,
   "create_text_file": create_text_file
 }
+
+
+if __name__ == "__main__":
+    # 确保先登录一次，生成 token.json
+    # 第一次运行会弹出浏览器要求你用 Google 账号授权
+    service = get_google_drive_service()
+
+    # ====== 在这里手动调用要测试的方法 ======
+    print("=== 测试 search_file ===")
+    print(search_file("name contains 'report'"))
+
+    print("=== 测试 upload_file ===")
+    file_id = upload_file("data/example.txt")  # 确保本地有这个文件
+    print(file_id)
+
+    print("=== 测试 download_file ===")
+    print(download_file("<你的文件ID>", "downloaded.txt"))
+
+    print("=== 测试 create_folder ===")
+    print(create_folder("MyTestFolder"))

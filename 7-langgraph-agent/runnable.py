@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 import uuid
 import os
+import cv2
+import numpy as np
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import ToolMessage
@@ -78,7 +80,7 @@ def tool_node(state: GraphState) -> Dict[str, AnyMessage]:
     last_message = messages[-1] if messages else None
 
     outputs = []
-
+    print("Last message===", last_message)
     if last_message and last_message.tool_calls:
         for call in last_message.tool_calls:
             tool = available_functions.get(call['name'], None)
@@ -116,13 +118,6 @@ def should_continue(state: GraphState) -> Literal["__end__", "tools"]:
 
     
 async def get_runnable():
-    # Create data directory if it doesn't exist
-    data_dir = Path(__file__).parent / "data"
-    data_dir.mkdir(exist_ok=True)
-    
-    # Use a file-based database instead of memory
-    db_path = data_dir / f"chat_{uuid.uuid4()}.db"
-
     workflow = StateGraph(GraphState)
 
     # Define the nodes and how they connect
@@ -138,5 +133,76 @@ async def get_runnable():
     workflow.add_edge("tools", "agent")
 
     # Use our simple checkpointer
-    app = workflow.compile(checkpointer=memory)
-    return app
+    graph = workflow.compile(checkpointer=memory)
+
+    # Save Graph Flowchart
+    # Save Graph Flowchart with proper path handling
+    current_dir = Path(__file__).parent
+    assets_dir = current_dir / "assets"
+    
+    print(f"Current directory: {current_dir}")
+    print(f"Assets directory: {assets_dir}")
+    
+    # Create assets directory if it doesn't exist
+    assets_dir.mkdir(exist_ok=True)
+    
+    # Use absolute path for saving
+    output_path = str(assets_dir / "graph2.png")
+    print(f"Output path: {output_path}")
+    
+    try:
+        # Get graph visualization
+        image_bytes = graph.get_graph().draw_mermaid_png()
+        if image_bytes is None:
+            print("Error: No image data generated")
+            return graph
+            
+        print(f'Image bytes length: {len(image_bytes)}')
+        
+        # Decode image
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        if len(nparr) == 0:
+            print("Error: Empty image data")
+            return graph
+            
+        decoded = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if decoded is None:
+            print("Error: Failed to decode image")
+            return graph
+        
+        # Save with normalized path and check if directory exists
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        output_path = str(assets_dir.resolve() / "graph2.png")
+        
+        # Try alternative saving method if cv2.imwrite fails
+        try:
+            success = cv2.imwrite(output_path, decoded)
+            if not success:
+                # Try direct file writing
+                with open(output_path, 'wb') as f:
+                    f.write(cv2.imencode('.png', decoded)[1].tobytes())
+                print(f"Graph flowchart saved using alternative method at: {output_path}")
+            else:
+                print(f"Graph flowchart successfully saved at: {output_path}")
+        except Exception as write_error:
+            print(f"Error saving image: {write_error}")
+            
+    except Exception as e:
+        print(f"Error in image processing/saving: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+    return graph
+
+# Test the function directly
+if __name__ == "__main__":
+    import asyncio
+    
+    print("Starting graph generation...")
+    try:
+        asyncio.run(get_runnable())
+        print("Process completed")
+    except Exception as e:
+        print(f"Main execution error: {str(e)}")
+        import traceback
+        traceback.print_exc()

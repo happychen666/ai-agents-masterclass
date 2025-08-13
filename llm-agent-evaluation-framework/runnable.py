@@ -1,5 +1,6 @@
 from langgraph.graph.message import AnyMessage, add_messages
-from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
+# from langgraph.checkpoint.aiosqlite import AsyncSqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
@@ -23,6 +24,9 @@ from tools.vector_db_tools import available_vector_db_functions
 load_dotenv()
 model = os.getenv('LLM_MODEL', 'gpt-4o')
 provider = os.getenv('LLM_PROVIDER', 'auto')
+
+# Initialize memory
+memory = MemorySaver()
 
 provider_mapping = {
     "openai": ChatOpenAI,
@@ -179,7 +183,7 @@ def get_runnable():
     workflow.add_edge("tools", "agent")
 
     # Compile the LangGraph graph into a runnable
-    memory = AsyncSqliteSaver.from_conn_string(":memory:")
+    # memory = AsyncSqliteSaver.from_conn_string(":memory:")
     app = workflow.compile(checkpointer=memory)
 
     return app
