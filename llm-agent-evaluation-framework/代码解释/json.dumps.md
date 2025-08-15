@@ -121,3 +121,4 @@ loads = load string (反序列化)
 我可以帮你画一个**可视化对照图**，直观显示 `dumps` 和 `loads` 的转换流程，这样一看就懂。
 
 你想要我画吗？
+![alt text](image.png)
